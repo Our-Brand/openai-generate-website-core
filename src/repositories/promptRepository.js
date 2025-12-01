@@ -16,4 +16,4 @@ export function getPromptsForProject(projectId) {
        ORDER BY created_at DESC`
     )
     .all(projectId);
-}
+} 
