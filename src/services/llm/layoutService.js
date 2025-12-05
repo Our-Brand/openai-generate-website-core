@@ -1,138 +1,16 @@
-import OpenAI from "openai";
+import client from "./openaiClient.js";
+import { formatProjectHistory } from "./historyUtils.js";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+export async function generateLayout(prompt, projectMeta, colorMeta, projectPromptHistory = []) {
+  const historyBlock = formatProjectHistory(projectPromptHistory);
 
-if (!process.env.OPENAI_API_KEY) {
-  console.warn("Warning: OPENAI_API_KEY is not set in your environment.");
-}
-
-export async function generatePage(prompt, projectPromptHistory = []) {
-  // -------- 0. Format project history as text for context (oldest first) --------
-  let historyBlock = "";
-  if (Array.isArray(projectPromptHistory) && projectPromptHistory.length > 0) {
-    const items = projectPromptHistory.map((p, idx) => {
-      const text = typeof p === "string" ? p : p?.prompt ?? "";
-      return `${idx + 1}. ${text}`;
-    });
-
-    historyBlock = [
-      "",
-      "Project prompt history (oldest first):",
-      ...items,
-      "",
-      "Use this history to keep the visual language, tone, and information architecture consistent for this project.",
-      "You may refine or extend previous ideas instead of starting from scratch if that fits the new prompt.",
-    ].join("\n");
-  }
-
-  // -------- 1. Infer project name + context --------
-  let projectMeta = {
-    projectName: "New Project",
-    sector: "SaaS",
-    audience: "B2B decision makers",
-    primaryGoal: "Generate a modern marketing landing page",
-  };
-
-  try {
-    const metaResponse = await client.responses.create({
-      model: "gpt-4.1-mini",
-      max_output_tokens: 400,
-      instructions: [
-        "You are a concise branding and product strategist.",
-        "From the user's description and history, infer:",
-        '- projectName: a short, product-like name (max 40 chars, no quotes).',
-        '- sector: a short description of the sector, like \"B2B analytics SaaS\", \"DevTools\", \"Fintech\", etc.',
-        '- audience: the main target audience, e.g. \"founders\", \"data teams\", \"marketing leaders\".',
-        '- primaryGoal: what this page is mainly trying to achieve, in 1 short sentence.',
-        "",
-        'Return ONLY a JSON object: {"projectName": "...", "sector": "...", "audience": "...", "primaryGoal": "..."}',
-        "No markdown, no backticks, no commentary.",
-      ].join("\n"),
-      input: [
-        {
-          role: "user",
-          content: ["User prompt:", prompt, historyBlock].join("\n"),
-        },
-      ],
-    });
-
-    const metaText = metaResponse.output_text;
-    const parsed = JSON.parse(metaText);
-    projectMeta = {
-      ...projectMeta,
-      ...parsed,
-    };
-  } catch (err) {
-    console.warn("Failed to infer project meta, using defaults:", err);
-  }
-
-  // -------- 2. Propose color palette for this sector --------
-  let colorMeta = {
-    primary: "#4F46E5",
-    primarySoft: "#EEF2FF",
-    accent: "#0EA5E9",
-    background: "#F8FAFC",
-    surface: "#FFFFFF",
-    textMain: "#0F172A",
-    textMuted: "#6B7280",
-  };
-
-  try {
-    const colorResponse = await client.responses.create({
-      model: "gpt-4.1-mini",
-      max_output_tokens: 400,
-      instructions: [
-        "You are a senior brand + UI designer.",
-        "Based on the sector, audience, and goal, pick a modern, usable SaaS color palette.",
-        "The palette must be suitable for Tailwind-like designs (light background, readable text).",
-        "",
-        'Return ONLY a JSON object like:',
-        "{",
-        '  "primary": "#4F46E5",',
-        '  "primarySoft": "#EEF2FF",',
-        '  "accent": "#0EA5E9",',
-        '  "background": "#F8FAFC",',
-        '  "surface": "#FFFFFF",',
-        '  "textMain": "#0F172A",',
-        '  "textMuted": "#6B7280"',
-        "}",
-        "",
-        "No markdown, no backticks, no commentary.",
-      ].join("\n"),
-      input: [
-        {
-          role: "user",
-          content: [
-            "Project context:",
-            `Name: ${projectMeta.projectName}`,
-            `Sector: ${projectMeta.sector}`,
-            `Audience: ${projectMeta.audience}`,
-            `Primary goal: ${projectMeta.primaryGoal}`,
-          ].join("\n"),
-        },
-      ],
-    });
-
-    const colorText = colorResponse.output_text;
-    const parsed = JSON.parse(colorText);
-    colorMeta = {
-      ...colorMeta,
-      ...parsed,
-    };
-  } catch (err) {
-    console.warn("Failed to infer color palette, using defaults:", err);
-  }
-
-  // -------- 3. Generate final React + HTML page --------
   const designSystemInstructions = [
     "You are a senior product designer + front-end engineer.",
     "You generate TWO things:",
     "1) A React + Tailwind component (as a full ES module).",
     "2) A static HTML page using Tailwind via CDN that visually matches the component.",
     "",
-    'Return ONLY a JSON object with exactly these keys: "reactComponent" and "previewHtml".',
+    'Return ONLY a JSON object with exactly these keys: \"reactComponent\" and \"previewHtml\".',
     "No markdown, no backticks, no explanations, no comments.",
     "",
     "---------------------------------------------------------",

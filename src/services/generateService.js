@@ -1,4 +1,4 @@
-import { generatePage } from "../llm.js";
+import { generatePage } from "./llm.js";
 import { getUserOrThrow } from "./userService.js";
 import {
   createProjectWithLimit,
@@ -14,15 +14,13 @@ export async function generateForProject({
   prompt,
 }) {
   // ensure user exists
-  getUserOrThrow(userId);
+  getUserOrThrow(userId); // or await if your impl is async
 
-  // 🔹 Load prompt history for this project (if any) and pass it to the LLM
   let history = [];
   if (projectId) {
-    history = getPromptHistoryForProject(projectId); // returns [{ id, prompt, created_at }, ...]
+    history = getPromptHistoryForProject(projectId); // or await, depending on impl
   }
 
-  // Call LLM with current prompt + history
   const raw = await generatePage(prompt, history);
 
   let parsed;
@@ -68,7 +66,6 @@ export async function generateForProject({
     });
   }
 
-  // log prompt
   savePrompt({ projectId: project.id, prompt });
 
   return {
