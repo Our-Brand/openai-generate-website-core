@@ -6,18 +6,22 @@ import {
   savePrompt,
   getPromptHistoryForProject,
 } from "./projectService.js";
+import { inferProjectMeta } from "./llm/projectMetaService.js";
 
-export async function generateForProject({
-  userId,
-  projectId,
-  prompt,
-}) {
+function normalizeProjectName(name) {
+  if (typeof name !== "string") return null;
+  const cleaned = name.trim().replace(/\s+/g, " ");
+  if (!cleaned) return null;
+  return cleaned.slice(0, 40); // match your meta constraint
+}
+
+export async function generateForProject({ userId, projectId, projectName, prompt }) {
   // ensure user exists
-  getUserOrThrow(userId); // or await if your impl is async
+  await getUserOrThrow(userId); // keep await if async
 
   let history = [];
   if (projectId) {
-    history = getPromptHistoryForProject(projectId); // or await, depending on impl
+    history = await getPromptHistoryForProject(projectId); // keep await if async
   }
 
   const raw = await generatePage(prompt, history);
@@ -44,28 +48,31 @@ export async function generateForProject({
   }
 
   let project;
+
   if (projectId) {
-    project = updateProjectCode({
+    project = await updateProjectCode({
       userId,
       projectId,
       reactCode: reactComponent,
       htmlCode: previewHtml,
     });
   } else {
-    const name =
-      typeof projectName === "string" && projectName.trim()
-        ? projectName.trim()
-        : `Project ${Date.now()}`;
+    // Prefer inferred name from prompt/history; fall back to provided; then fallback default
+    const inferred = await inferProjectMeta(prompt, history);
+    const inferredName = normalizeProjectName(inferred?.projectName);
+    const providedName = normalizeProjectName(projectName);
 
-    project = createProjectWithLimit({
+    const finalName = inferredName ?? providedName ?? `Project ${Date.now()}`;
+
+    project = await createProjectWithLimit({
       userId,
-      name,
+      name: finalName,
       reactCode: reactComponent,
       htmlCode: previewHtml,
     });
   }
 
-  savePrompt({ projectId: project.id, prompt });
+  await savePrompt({ projectId: project.id, prompt });
 
   return {
     projectId: project.id,

@@ -8,6 +8,10 @@ const DEFAULT_META = {
   primaryGoal: "Generate a modern marketing landing page",
 };
 
+function cleanStr(v) {
+  return typeof v === "string" ? v.trim() : undefined;
+}
+
 export async function inferProjectMeta(prompt, projectPromptHistory = []) {
   const historyBlock = formatProjectHistory(projectPromptHistory);
 
@@ -19,9 +23,9 @@ export async function inferProjectMeta(prompt, projectPromptHistory = []) {
         "You are a concise branding and product strategist.",
         "From the user's description and history, infer:",
         '- projectName: a short, product-like name (max 40 chars, no quotes).',
-        '- sector: a short description of the sector, like \"B2B analytics SaaS\", \"DevTools\", \"Fintech\", etc.',
-        '- audience: the main target audience, e.g. \"founders\", \"data teams\", \"marketing leaders\".',
-        '- primaryGoal: what this page is mainly trying to achieve, in 1 short sentence.',
+        '- sector: a short description of the sector, like "B2B analytics SaaS", "DevTools", "Fintech", etc.',
+        '- audience: the main target audience, e.g. "founders", "data teams", "marketing leaders".',
+        "- primaryGoal: what this page is mainly trying to achieve, in 1 short sentence.",
         "",
         'Return ONLY a JSON object: {"projectName": "...", "sector": "...", "audience": "...", "primaryGoal": "..."}',
         "No markdown, no backticks, no commentary.",
@@ -34,12 +38,16 @@ export async function inferProjectMeta(prompt, projectPromptHistory = []) {
       ],
     });
 
-    const metaText = metaResponse.output_text;
+    const metaText = (metaResponse?.output_text || "").trim();
     const parsed = JSON.parse(metaText);
 
     return {
       ...DEFAULT_META,
       ...parsed,
+      projectName: cleanStr(parsed?.projectName) ?? DEFAULT_META.projectName,
+      sector: cleanStr(parsed?.sector) ?? DEFAULT_META.sector,
+      audience: cleanStr(parsed?.audience) ?? DEFAULT_META.audience,
+      primaryGoal: cleanStr(parsed?.primaryGoal) ?? DEFAULT_META.primaryGoal,
     };
   } catch (err) {
     console.warn("Failed to infer project meta, using defaults:", err);

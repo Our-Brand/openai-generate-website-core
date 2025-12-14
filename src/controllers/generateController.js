@@ -5,7 +5,6 @@ const router = express.Router();
 
 /**
  * POST /api/generate-page
- * generate-page (pass project id, prompt, user id) (returns html and react code)
  * BODY:
  * {
  *   userId: number,
@@ -16,7 +15,7 @@ const router = express.Router();
  */
 router.post("/generate-page", async (req, res) => {
   try {
-    const { userId, projectId, prompt } = req.body;
+    const { userId, projectId, projectName, prompt } = req.body;
 
     if (typeof prompt !== "string" || !prompt.trim()) {
       return res
@@ -31,13 +30,12 @@ router.post("/generate-page", async (req, res) => {
         .json({ error: "userId must be a positive integer." });
     }
 
-    const numericProjectId =
-      projectId != null ? Number(projectId) : undefined;
+    const numericProjectId = projectId != null ? Number(projectId) : undefined;
     if (projectId != null) {
       if (!Number.isInteger(numericProjectId) || numericProjectId <= 0) {
-        return res
-          .status(400)
-          .json({ error: "projectId must be a positive integer when provided." });
+        return res.status(400).json({
+          error: "projectId must be a positive integer when provided.",
+        });
       }
     }
 
@@ -46,10 +44,12 @@ router.post("/generate-page", async (req, res) => {
       result = await generateForProject({
         userId: numericUserId,
         projectId: numericProjectId,
+        projectName,
         prompt,
       });
     } catch (err) {
       console.error("Generate service error:", err);
+
       if (err.code === "USER_NOT_FOUND") {
         return res.status(404).json({ error: "User not found." });
       }
@@ -63,16 +63,14 @@ router.post("/generate-page", async (req, res) => {
           .status(400)
           .json({ error: "User has reached the maximum of 5 projects." });
       }
-      if (
-        err.code === "LLM_INVALID_JSON" ||
-        err.code === "LLM_MISSING_FIELDS"
-      ) {
+      if (err.code === "LLM_INVALID_JSON" || err.code === "LLM_MISSING_FIELDS") {
         return res.status(500).json({ error: err.message });
       }
+
       throw err;
     }
 
-    res.json(result); // { projectId, html, react }
+    res.json(result);
   } catch (err) {
     console.error("OpenAI or server error:", err);
     res.status(500).json({ error: "AI generation failed" });
