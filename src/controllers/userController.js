@@ -90,4 +90,36 @@ router.post("/logout", (req, res) => {
   res.status(200).json({ success: true });
 });
 
+/**
+ * DELETE /api/delete/user
+ * delete user
+ */
+router.delete("/user/delete", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (
+      typeof email !== "string" ||
+      !email.trim()
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Missing or invalid email." });
+    }
+
+    try {
+      user = await deleteUser(email.trim());
+    } catch (authErr) {
+      if (authErr.code === "INVALID_CREDENTIALS") {
+        return res.status(401).json({ error: "Invalid credentials." });
+      }
+      throw authErr;
+    }
+
+  } catch (err) {
+    console.error("Delete error:", err);
+    res.status(500).json({ error: "Error deleting user." });
+  }
+})
+
 export default router;

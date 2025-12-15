@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import {
   createUser,
+  deleteUserByEmail,
   findUserByEmail,
   findUserById,
 } from "../repositories/userRepository.js";
@@ -41,3 +42,16 @@ export async function authenticateUser(email, password) {
 
   return { id: user.id, name: user.name, email: user.email };
 }
+
+export async function deleteUser(email) {
+  const result = deleteUserByEmail(email);
+
+  if (result.changes === 0) {
+    const err = new Error("Invalid credentials.");
+    err.code = "INVALID_CREDENTIALS";
+    throw err;
+  }
+
+  return true;
+}
+

@@ -156,6 +156,28 @@ export const swaggerSpec = {
       },
     },
 
+    "/api/user/delete": {
+      delete: {
+        summary: "Delete user",
+        tags: ["Auth"],
+        response: {
+          200: {
+            description: "User deleted successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
     "/api/projects": {
       get: {
         summary: "Get projects for a user",

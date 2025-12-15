@@ -19,3 +19,9 @@ export function findUserByEmail(email) {
     .prepare(`SELECT id, name, email, password FROM user WHERE email = ?`)
     .get(email);
 }
+
+export function deleteUserByEmail(email) {
+  return db
+    .prepare(`DELETE FROM user WHERE email = ?`)
+    .run(email);
+}
