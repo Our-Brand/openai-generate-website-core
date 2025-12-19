@@ -64,7 +64,7 @@ router.post("/generate-page", async (req, res) => {
           .json({ error: "User has reached the maximum of 5 projects." });
       }
       if (err.code === "LLM_INVALID_JSON" || err.code === "LLM_MISSING_FIELDS") {
-        return res.status(500).json({ error: err.message });
+        return res.status(500);
       }
 
       throw err;
